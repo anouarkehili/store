@@ -3,7 +3,7 @@ import { ArrowRight, Check, Phone } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useStore } from '../contexts/StoreContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { WILAYAS, getCommunes } from '../data/algerianCities';
+import { getWilayasFromCSV } from '../data/csvReader';
 
 interface CheckoutProps {
   onBack: () => void;
@@ -12,7 +12,7 @@ interface CheckoutProps {
 
 export const Checkout: React.FC<CheckoutProps> = ({ onBack, onClose }) => {
   const { items, getCartTotal, createOrder } = useCart();
-  const { settings } = useStore();
+  const { settings, algerianCities, getCommunesForWilaya, getWilayaShipping } = useStore();
   const { language, t } = useLanguage();
 
   const [formData, setFormData] = useState({
@@ -26,8 +26,16 @@ export const Checkout: React.FC<CheckoutProps> = ({ onBack, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
-  const availableCommunes = formData.wilaya ? getCommunes(formData.wilaya) : [];
-  const shippingCost = shippingType === 'home' ? settings.homeDeliveryPrice : settings.officeDeliveryPrice;
+  // Get wilayas from loaded CSV data
+  const wilayas = getWilayasFromCSV(algerianCities);
+  const availableCommunes = formData.wilaya ? getCommunesForWilaya(formData.wilaya) : [];
+  
+  // Get shipping cost for selected wilaya or use default
+  const wilayaShippingInfo = getWilayaShipping(formData.wilaya);
+  const shippingCost = shippingType === 'home' 
+    ? (wilayaShippingInfo?.homeDeliveryPrice || settings.homeDeliveryPrice)
+    : (wilayaShippingInfo?.officeDeliveryPrice || settings.officeDeliveryPrice);
+    
   const totalAmount = getCartTotal() + shippingCost;
 
   const handleInputChange = (field: string, value: string) => {
@@ -51,12 +59,12 @@ export const Checkout: React.FC<CheckoutProps> = ({ onBack, onClose }) => {
       createOrder({
         fullName: formData.fullName,
         phone: formData.phone,
-        wilaya: WILAYAS.find(w => w.code === formData.wilaya)?.name || '',
+        wilaya: wilayas.find(w => w.code === formData.wilaya)?.name || '',
         commune: formData.commune
       }, shippingType, shippingCost);
 
       // Send WhatsApp message
-      const wilayaName = WILAYAS.find(w => w.code === formData.wilaya)?.name || '';
+      const wilayaName = wilayas.find(w => w.code === formData.wilaya)?.name || '';
       const orderText = `طلب جديد من متجر GYM DADA STORE\n\n` +
                        `الاسم: ${formData.fullName}\n` +
                        `الهاتف: ${formData.phone}\n` +
@@ -199,7 +207,7 @@ export const Checkout: React.FC<CheckoutProps> = ({ onBack, onClose }) => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">{t('checkout.select.wilaya')}</option>
-                      {WILAYAS.map(wilaya => (
+                      {wilayas.map(wilaya => (
                         <option key={wilaya.code} value={wilaya.code}>
                           {wilaya.name}
                         </option>
@@ -244,7 +252,9 @@ export const Checkout: React.FC<CheckoutProps> = ({ onBack, onClose }) => {
                     />
                     <div className="flex-1">
                       <div className="font-medium">{t('checkout.home.delivery')}</div>
-                      <div className="text-sm text-gray-600">{settings.homeDeliveryPrice} دج</div>
+                      <div className="text-sm text-gray-600">
+                        {wilayaShippingInfo?.homeDeliveryPrice || settings.homeDeliveryPrice} دج
+                      </div>
                     </div>
                   </label>
 
@@ -259,7 +269,9 @@ export const Checkout: React.FC<CheckoutProps> = ({ onBack, onClose }) => {
                     />
                     <div className="flex-1">
                       <div className="font-medium">{t('checkout.office.delivery')}</div>
-                      <div className="text-sm text-gray-600">{settings.officeDeliveryPrice} دج</div>
+                      <div className="text-sm text-gray-600">
+                        {wilayaShippingInfo?.officeDeliveryPrice || settings.officeDeliveryPrice} دج
+                      </div>
                     </div>
                   </label>
                 </div>

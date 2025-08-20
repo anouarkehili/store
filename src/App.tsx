@@ -1,60 +1,63 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { StoreProvider } from './contexts/StoreContext';
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
-import { MainApp } from './components/MainApp';
+import { Header } from './components/Header';
+import { Footer } from './components/Footer';
+import { HomePage } from './pages/HomePage';
+import { CategoryPage } from './pages/CategoryPage';
+import { BestSellersPage } from './pages/BestSellersPage';
+import { SpecialOffersPage } from './pages/SpecialOffersPage';
+import { ProductPage } from './pages/ProductPage';
+import { CartPage } from './pages/CartPage';
+import { AdminPage } from './pages/AdminPage';
+import { AboutPage } from './pages/AboutPage';
+import { ContactPage } from './pages/ContactPage';
+import { AccountPage } from './pages/AccountPage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { TermsPage } from './pages/TermsPage';
+import { Cart } from './components/Cart';
+import { useState } from 'react';
 
 function App() {
-  const [currentView, setCurrentView] = useState<'store' | 'product' | 'cart' | 'admin'>('store');
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-
-  const handleProductSelect = (productId: string) => {
-    setSelectedProductId(productId);
-    setCurrentView('product');
-  };
-
-  const handleCategorySelect = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    setCurrentView('store');
-  };
-
-  const handleBackToStore = () => {
-    setCurrentView('store');
-    setSelectedProductId(null);
-  };
-
-  const handleCartOpen = () => {
-    setIsCartOpen(true);
-  };
-
-  const handleCartClose = () => {
-    setIsCartOpen(false);
-  };
-
-  const handleAdminAccess = () => {
-    setCurrentView('admin');
-  };
 
   return (
     <AuthProvider>
       <LanguageProvider>
         <StoreProvider>
           <CartProvider>
-            <div className="min-h-screen bg-gray-50" dir="rtl">
-              <MainApp
-                currentView={currentView}
-                setCurrentView={setCurrentView}
-                selectedProductId={selectedProductId}
-                setSelectedProductId={setSelectedProductId}
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-                isCartOpen={isCartOpen}
-                setIsCartOpen={setIsCartOpen}
-              />
-            </div>
+            <Router>
+              <div className="min-h-screen bg-gray-50" dir="rtl">
+                <Header 
+                  onCartClick={() => setIsCartOpen(true)}
+                  onAdminAccess={() => {}}
+                />
+                
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/category/:id" element={<CategoryPage />} />
+                  <Route path="/best-sellers" element={<BestSellersPage />} />
+                  <Route path="/special-offers" element={<SpecialOffersPage />} />
+                  <Route path="/product/:id" element={<ProductPage />} />
+                  <Route path="/cart" element={<CartPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/contact" element={<ContactPage />} />
+                  <Route path="/account" element={<AccountPage />} />
+                  <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/terms" element={<TermsPage />} />
+                </Routes>
+
+                <Footer />
+
+                {isCartOpen && (
+                  <Cart onClose={() => setIsCartOpen(false)} />
+                )}
+              </div>
+            </Router>
           </CartProvider>
         </StoreProvider>
       </LanguageProvider>

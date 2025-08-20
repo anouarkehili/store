@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { AlgerianCity, loadAlgerianCitiesData, getWilayasFromCSV, getCommunesForWilaya } from '../data/csvReader';
 
 export interface Product {
   id: string;
@@ -28,6 +29,24 @@ export interface Advertisement {
   link?: string;
 }
 
+export interface Page {
+  id: string;
+  title: { ar: string; fr: string };
+  slug: string;
+  content: { ar: string; fr: string };
+  isPublished: boolean;
+  showInFooter: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WilayaShipping {
+  wilayaCode: string;
+  wilayaName: string;
+  homeDeliveryPrice: number;
+  officeDeliveryPrice: number;
+}
+
 interface StoreSettings {
   storeName: { ar: string; fr: string };
   logo: string;
@@ -38,13 +57,17 @@ interface StoreSettings {
   secondaryColor: string;
   homeDeliveryPrice: number;
   officeDeliveryPrice: number;
+  freeShippingThreshold: number; // Number of products for free shipping
 }
 
 interface StoreContextType {
   products: Product[];
   categories: Category[];
   advertisements: Advertisement[];
+  pages: Page[];
   settings: StoreSettings;
+  algerianCities: AlgerianCity[];
+  wilayaShipping: WilayaShipping[];
   addProduct: (product: Product) => void;
   updateProduct: (id: string, product: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -54,7 +77,13 @@ interface StoreContextType {
   addAdvertisement: (ad: Advertisement) => void;
   updateAdvertisement: (id: string, ad: Partial<Advertisement>) => void;
   deleteAdvertisement: (id: string) => void;
+  addPage: (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updatePage: (id: string, page: Partial<Page>) => void;
+  deletePage: (id: string) => void;
   updateSettings: (settings: Partial<StoreSettings>) => void;
+  updateWilayaShipping: (wilayaCode: string, shipping: Partial<WilayaShipping>) => void;
+  getWilayaShipping: (wilayaCode: string) => WilayaShipping | undefined;
+  getCommunesForWilaya: (wilayaCode: string) => string[];
 }
 
 const defaultSettings: StoreSettings = {
@@ -67,31 +96,87 @@ const defaultSettings: StoreSettings = {
   secondaryColor: '#ea580c',
   homeDeliveryPrice: 400,
   officeDeliveryPrice: 200,
+  freeShippingThreshold: 4,
 };
+
+const defaultPages: Page[] = [
+  {
+    id: '1',
+    title: { ar: 'عن الموقع', fr: 'À propos' },
+    slug: 'about',
+    content: { 
+      ar: 'نحن متجر متخصص في بيع المكملات الغذائية والمنتجات الرياضية عالية الجودة. نهدف إلى مساعدة عملائنا في تحقيق أهدافهم الرياضية والصحية.',
+      fr: 'Nous sommes un magasin spécialisé dans la vente de compléments alimentaires et de produits sportifs de haute qualité. Nous visons à aider nos clients à atteindre leurs objectifs sportifs et de santé.'
+    },
+    isPublished: true,
+    showInFooter: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '2',
+    title: { ar: 'اتصل بنا', fr: 'Contactez-nous' },
+    slug: 'contact',
+    content: { 
+      ar: 'يمكنكم التواصل معنا عبر الهاتف أو واتساب للاستفسار عن المنتجات أو للحصول على المساعدة.',
+      fr: 'Vous pouvez nous contacter par téléphone ou WhatsApp pour vous renseigner sur les produits ou obtenir de l\'aide.'
+    },
+    isPublished: true,
+    showInFooter: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '3',
+    title: { ar: 'سياسة الخصوصية', fr: 'Politique de confidentialité' },
+    slug: 'privacy',
+    content: { 
+      ar: 'نحن نحترم خصوصيتكم ونلتزم بحماية معلوماتكم الشخصية. لا نشارك معلوماتكم مع أطراف ثالثة دون موافقتكم.',
+      fr: 'Nous respectons votre vie privée et nous nous engageons à protéger vos informations personnelles. Nous ne partageons pas vos informations avec des tiers sans votre consentement.'
+    },
+    isPublished: true,
+    showInFooter: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '4',
+    title: { ar: 'اتفاقية الموقع', fr: 'Conditions d\'utilisation' },
+    slug: 'terms',
+    content: { 
+      ar: 'باستخدام موقعنا، فإنكم توافقون على الشروط والأحكام المذكورة. يرجى قراءة هذه الشروط بعناية قبل استخدام الموقع.',
+      fr: 'En utilisant notre site, vous acceptez les termes et conditions mentionnés. Veuillez lire attentivement ces conditions avant d\'utiliser le site.'
+    },
+    isPublished: true,
+    showInFooter: true,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+];
 
 const defaultCategories: Category[] = [
   {
     id: '1',
     name: { ar: 'البروتين', fr: 'Protéines' },
-    icon: '🏋️',
+    icon: '💪',
     color: '#ef4444',
   },
   {
     id: '2',
     name: { ar: 'المكملات الغذائية', fr: 'Suppléments' },
-    icon: '💊',
+    icon: '🧬',
     color: '#10b981',
   },
   {
     id: '3',
     name: { ar: 'الملابس الرياضية', fr: 'Vêtements' },
-    icon: '👕',
+    icon: '🏃',
     color: '#8b5cf6',
   },
   {
     id: '4',
     name: { ar: 'الفيتامينات', fr: 'Vitamines' },
-    icon: '🍊',
+    icon: '⚡',
     color: '#f59e0b',
   },
 ];
@@ -188,7 +273,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [products, setProducts] = useState<Product[]>(defaultProducts);
   const [categories, setCategories] = useState<Category[]>(defaultCategories);
   const [advertisements, setAdvertisements] = useState<Advertisement[]>(defaultAdvertisements);
+  const [pages, setPages] = useState<Page[]>(defaultPages);
   const [settings, setSettings] = useState<StoreSettings>(defaultSettings);
+  const [algerianCities, setAlgerianCities] = useState<AlgerianCity[]>([]);
+  const [wilayaShipping, setWilayaShipping] = useState<WilayaShipping[]>([]);
+
+  // Load Algerian cities data on component mount
+  React.useEffect(() => {
+    loadAlgerianCitiesData().then(cities => {
+      setAlgerianCities(cities);
+      
+      // Initialize wilaya shipping with default prices
+      const wilayas = getWilayasFromCSV(cities);
+      const defaultShipping = wilayas.map(wilaya => ({
+        wilayaCode: wilaya.code,
+        wilayaName: wilaya.name,
+        homeDeliveryPrice: settings.homeDeliveryPrice,
+        officeDeliveryPrice: settings.officeDeliveryPrice
+      }));
+      setWilayaShipping(defaultShipping);
+    });
+  }, []);
 
   const addProduct = (product: Product) => {
     setProducts(prev => [...prev, product]);
@@ -226,8 +331,46 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setAdvertisements(prev => prev.filter(a => a.id !== id));
   };
 
+  const addPage = (pageData: Omit<Page, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newPage: Page = {
+      ...pageData,
+      id: Date.now().toString(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    setPages(prev => [...prev, newPage]);
+  };
+
+  const updatePage = (id: string, pageUpdate: Partial<Page>) => {
+    setPages(prev => prev.map(p => 
+      p.id === id 
+        ? { ...p, ...pageUpdate, updatedAt: new Date() }
+        : p
+    ));
+  };
+
+  const deletePage = (id: string) => {
+    setPages(prev => prev.filter(p => p.id !== id));
+  };
+
   const updateSettings = (settingsUpdate: Partial<StoreSettings>) => {
     setSettings(prev => ({ ...prev, ...settingsUpdate }));
+  };
+
+  const updateWilayaShipping = (wilayaCode: string, shippingUpdate: Partial<WilayaShipping>) => {
+    setWilayaShipping(prev => prev.map(w => 
+      w.wilayaCode === wilayaCode 
+        ? { ...w, ...shippingUpdate }
+        : w
+    ));
+  };
+
+  const getWilayaShipping = (wilayaCode: string): WilayaShipping | undefined => {
+    return wilayaShipping.find(w => w.wilayaCode === wilayaCode);
+  };
+
+  const getCommunesForWilayaFunc = (wilayaCode: string): string[] => {
+    return getCommunesForWilaya(algerianCities, wilayaCode);
   };
 
   return (
@@ -235,7 +378,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       products,
       categories,
       advertisements,
+      pages,
       settings,
+      algerianCities,
+      wilayaShipping,
       addProduct,
       updateProduct,
       deleteProduct,
@@ -245,7 +391,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       addAdvertisement,
       updateAdvertisement,
       deleteAdvertisement,
+      addPage,
+      updatePage,
+      deletePage,
       updateSettings,
+      updateWilayaShipping,
+      getWilayaShipping,
+      getCommunesForWilaya: getCommunesForWilayaFunc,
     }}>
       {children}
     </StoreContext.Provider>

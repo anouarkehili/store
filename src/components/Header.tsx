@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, ShoppingCart, Menu, Heart, UserCircle, X, ChevronDown, ChevronUp, LogOut, Settings } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
-import { useStore, Category } from '../contexts/StoreContext'; // Assuming Category type is exported
+import { useStore, Category } from '../contexts/StoreContext';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,20 +12,23 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) => {
-  const { language, t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { settings, categories } = useStore();
   const { getCartItemsCount } = useCart();
   const { currentUser, isAuthenticated, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isCategoriesMenuOpen, setIsCategoriesMenuOpen] = useState(false);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const categoriesMenuRef = useRef<HTMLDivElement>(null);
   const cartItemsCount = getCartItemsCount();
 
   const mockWishlistItems = [
@@ -44,6 +48,10 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
 
   const handleAccountClick = () => {
     setIsAccountMenuOpen(!isAccountMenuOpen);
+  };
+
+  const handleCategoriesClick = () => {
+    setIsCategoriesMenuOpen(!isCategoriesMenuOpen);
   };
   
   const handleWishlistClick = () => {
@@ -79,30 +87,39 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
     setIsSideMenuOpen(!isSideMenuOpen);
   };
 
-  // Close account menu when clicking outside
+  const handleLanguageSwitch = () => {
+    setLanguage(language === 'ar' ? 'fr' : 'ar');
+  };
+
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
         setIsAccountMenuOpen(false);
+      }
+      if (categoriesMenuRef.current && !categoriesMenuRef.current.contains(event.target as Node)) {
+        setIsCategoriesMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [accountMenuRef]);
+  }, []);
 
-  // The user requested a logo. Since we can't load a local file, we create a simple text-based logo.
   const logo = (
-    <div className="flex items-center gap-2">
-      <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white text-lg font-bold">
-        GD
+    <Link to="/" className="flex items-center gap-2">
+      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-orange-500 rounded-lg flex items-center justify-center text-white font-bold text-xl">
+        GYM
       </div>
-      <h1 className="text-xl font-bold text-gray-900">GYM DADA STORE</h1>
-    </div>
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">GYM DADA STORE</h1>
+        <p className="text-xs text-orange-500">Your Fitness Partner</p>
+      </div>
+    </Link>
   );
 
-  // Reusable login/signup form modal component
+  // Login/Signup Form Modal
   const LoginSignupForm = ({ isLoginMode, onClose }) => {
     const [formData, setFormData] = useState({
       fullName: '',
@@ -249,7 +266,7 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
     );
   };
 
-  // Search modal component
+  // Search Modal
   const SearchModal = ({ onClose }) => (
     <div className="fixed inset-0 z-[100] bg-black bg-opacity-50 flex justify-center items-center transition-opacity duration-300">
       <div className="bg-white p-6 md:p-8 rounded-lg shadow-lg w-11/12 max-w-lg relative">
@@ -271,7 +288,7 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
     </div>
   );
 
-  // Mobile side menu component
+  // Mobile Side Menu
   const SideMenu = ({ isOpen, onClose }) => {
     return (
       <div className={`fixed top-0 ${language === 'ar' ? 'right-0' : 'left-0'} z-[110] h-full w-80 max-w-full bg-white shadow-xl transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : language === 'ar' ? 'translate-x-full' : '-translate-x-full'}`}>
@@ -283,13 +300,18 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
             </button>
           </div>
           <nav className="flex flex-col space-y-4 border-b pb-4">
+            <Link to="/" onClick={onClose} className="flex items-center gap-4 text-gray-700 hover:text-blue-600 transition-colors">
+              الصفحة الرئيسية
+            </Link>
+            <Link to="/best-sellers" onClick={onClose} className="flex items-center gap-4 text-gray-700 hover:text-blue-600 transition-colors">
+              الأكثر مبيعاً
+            </Link>
+            <Link to="/special-offers" onClick={onClose} className="flex items-center gap-4 text-gray-700 hover:text-blue-600 transition-colors">
+              العروض الخاصة
+            </Link>
             <button onClick={handleWishlistClick} className="flex items-center gap-4 text-gray-700 hover:text-blue-600 transition-colors">
               <Heart size={20} />
               <span>قائمة الرغبات</span>
-            </button>
-            <button onClick={handleLoginClick} className="flex items-center gap-4 text-gray-700 hover:text-blue-600 transition-colors">
-              <UserCircle size={20} />
-              <span>حسابي</span>
             </button>
             <button onClick={onCartClick} className="flex items-center gap-4 text-gray-700 hover:text-blue-600 transition-colors">
               <ShoppingCart size={20} />
@@ -299,11 +321,15 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
           <div className="mt-4">
             <h3 className="text-sm font-semibold text-gray-500 mb-2">الأصناف</h3>
             <ul className="space-y-2">
-              {categories.map((category: Category) => ( // Use real categories from store
+              {categories.map((category: Category) => (
                 <li key={category.id}>
-                  <a href="#" className="block p-2 rounded-md hover:bg-gray-100 transition-colors text-gray-800">
+                  <Link 
+                    to={`/category/${category.id}`} 
+                    onClick={onClose}
+                    className="block p-2 rounded-md hover:bg-gray-100 transition-colors text-gray-800"
+                  >
                     {category.name[language]}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -316,10 +342,8 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
   const WishlistSidebar = ({ isOpen, onClose, items }) => {
     return (
       <>
-        {/* Overlay */}
         {isOpen && <div className="fixed inset-0 z-[105] bg-black bg-opacity-50 transition-opacity duration-300" onClick={onClose}></div>}
         
-        {/* Sidebar */}
         <div className={`fixed top-0 right-0 z-[110] h-full w-80 max-w-full bg-white shadow-xl transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
@@ -336,7 +360,6 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
                       <h3 className="font-semibold text-gray-800">{item.name}</h3>
                       <p className="text-sm text-gray-500">{item.price}</p>
                     </div>
-                    {/* Add more interactive buttons like "Add to Cart" or "Remove" here if needed */}
                   </div>
                 ))
               ) : (
@@ -351,45 +374,67 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
 
   return (
     <>
-      <header className="bg-gray-100 shadow-lg sticky top-0 z-50">
+      <header className="bg-white shadow-lg sticky top-0 z-50">
         {/* Top Bar */}
-        <div className="bg-white text-gray-800 py-3 px-4 shadow-sm">
+        <div className="bg-gradient-to-r from-blue-600 to-orange-500 text-white py-2 px-4">
           <div className="container mx-auto flex justify-between items-center text-sm">
-            {/* Left side: Wishlist & Account */}
+            {/* Left side: Language & Wishlist & Account */}
             <div className="flex items-center gap-4">
-              <button onClick={handleWishlistClick} className="flex items-center gap-1 hover:text-gray-900 transition-colors">
+              {/* Language Switcher */}
+              <button
+                onClick={handleLanguageSwitch}
+                className="flex items-center gap-2 hover:bg-white hover:bg-opacity-20 px-3 py-1 rounded-full transition-colors"
+              >
+                <span className="text-xl">
+                  {language === 'ar' ? '🇫🇷' : '🇩🇿'}
+                </span>
+                <span className="hidden sm:inline">
+                  {language === 'ar' ? 'Français' : 'العربية'}
+                </span>
+              </button>
+
+              <button onClick={handleWishlistClick} className="flex items-center gap-1 hover:bg-white hover:bg-opacity-20 px-3 py-1 rounded-full transition-colors">
                 <Heart size={18} />
                 <span className="hidden sm:inline">قائمة الرغبات</span>
               </button>
+
               <div className="relative" ref={accountMenuRef}>
                 <button
                   onClick={handleAccountClick}
-                  className="flex items-center gap-1 hover:text-gray-900 transition-colors focus:outline-none"
+                  className="flex items-center gap-1 hover:bg-white hover:bg-opacity-20 px-3 py-1 rounded-full transition-colors focus:outline-none"
                 >
                   <UserCircle size={18} />
                   <span className="hidden sm:inline">حسابي</span>
                   {isAccountMenuOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
                 {isAccountMenuOpen && (
-                  <div className={`absolute top-full mt-2 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20 ${language === 'ar' ? 'right-0' : 'left-0'}`}>
-                    <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button">
+                  <div className={`absolute top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20 ${language === 'ar' ? 'right-0' : 'left-0'}`}>
+                    <div className="py-1" role="menu">
                       {isAuthenticated ? (
                         <>
                           <div className="px-4 py-2 text-sm text-gray-700 border-b">
                             مرحباً، {currentUser?.fullName}
                           </div>
+                          <Link
+                            to="/account"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={() => setIsAccountMenuOpen(false)}
+                          >
+                            حسابي
+                          </Link>
                           {isAdmin && (
-                            <button
-                              onClick={onAdminAccess}
-                              className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                            <Link
+                              to="/admin"
+                              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={() => setIsAccountMenuOpen(false)}
                             >
                               <Settings size={16} />
                               لوحة التحكم
-                            </button>
+                            </Link>
                           )}
                           <button
                             onClick={handleLogout}
-                            className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                            className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
                             <LogOut size={16} />
                             تسجيل الخروج
@@ -399,13 +444,13 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
                         <>
                           <button
                             onClick={handleLoginClick}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
                             تسجيل الدخول
                           </button>
                           <button
                             onClick={handleSignupClick}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
                             إنشاء حساب
                           </button>
@@ -416,12 +461,13 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
                 )}
               </div>
             </div>
-            {/* Right side: Welcome message & phone number */}
-            <div className={`text-center ${language === 'ar' ? 'order-first' : 'order-last'}`}>
-              <span className="text-gray-600 hidden sm:inline">
+
+            {/* Right side: Welcome message & phone */}
+            <div className="text-center">
+              <span className="text-white hidden sm:inline">
                 {isAuthenticated ? `مرحباً ${currentUser?.fullName} | ` : 'مرحباً بكم في GYM DADA STORE | '}
               </span>
-              <span className="text-gray-800 font-medium">اتصل بنا: 0699446868</span>
+              <span className="text-white font-medium">📞 0699446868</span>
             </div>
           </div>
         </div>
@@ -429,21 +475,49 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
         {/* Main Header */}
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           {/* Logo */}
-          <a href="#" className="flex-shrink-0">
+          <div className="flex-shrink-0">
             {logo}
-          </a>
+          </div>
           
-          {/* Navigation Menu (Desktop) */}
-          <nav className="hidden md:flex flex-grow justify-center gap-8 text-lg font-medium">
-            <a href="#" className="text-gray-800 hover:text-gray-950 transition-colors">
+          {/* Navigation Menu (Desktop) - Centered */}
+          <nav className="hidden lg:flex flex-grow justify-center gap-8 text-lg font-medium">
+            <Link to="/" className="text-gray-800 hover:text-blue-600 transition-colors px-4 py-2 rounded-lg hover:bg-blue-50">
               الصفحة الرئيسية
-            </a>
-            <a href="#" className="text-gray-800 hover:text-gray-950 transition-colors">
-              من نحن
-            </a>
-            <a href="#" className="text-gray-800 hover:text-gray-950 transition-colors">
-              منتجاتنا
-            </a>
+            </Link>
+            <Link to="/best-sellers" className="text-gray-800 hover:text-blue-600 transition-colors px-4 py-2 rounded-lg hover:bg-blue-50">
+              الأكثر مبيعاً
+            </Link>
+            <Link to="/special-offers" className="text-gray-800 hover:text-blue-600 transition-colors px-4 py-2 rounded-lg hover:bg-blue-50">
+              العروض الخاصة
+            </Link>
+            
+            {/* Categories Dropdown */}
+            <div className="relative" ref={categoriesMenuRef}>
+              <button
+                onClick={handleCategoriesClick}
+                className="flex items-center gap-1 text-gray-800 hover:text-blue-600 transition-colors px-4 py-2 rounded-lg hover:bg-blue-50"
+              >
+                الأصناف
+                {isCategoriesMenuOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {isCategoriesMenuOpen && (
+                <div className="absolute top-full mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20 right-0">
+                  <div className="py-2">
+                    {categories.map((category) => (
+                      <Link
+                        key={category.id}
+                        to={`/category/${category.id}`}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        onClick={() => setIsCategoriesMenuOpen(false)}
+                      >
+                        <span className="text-xl">{category.icon}</span>
+                        <span>{category.name[language]}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* Icons (Desktop) */}
@@ -451,7 +525,7 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
             {/* Search Icon */}
             <button
               onClick={handleSearchClick}
-              className="p-2 rounded-full text-gray-600 hover:bg-gray-200 transition-colors"
+              className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <Search size={24} />
             </button>
@@ -459,18 +533,18 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
             {/* Shopping Cart Button */}
             <button
               onClick={onCartClick}
-              className="relative p-2 rounded-full bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+              className="relative p-2 rounded-full bg-gradient-to-r from-blue-600 to-orange-500 text-white hover:from-blue-700 hover:to-orange-600 transition-all transform hover:scale-105"
             >
               <ShoppingCart size={24} />
               {cartItemsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold border-2 border-white">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white animate-pulse">
                   {cartItemsCount}
                 </span>
               )}
             </button>
             
             {/* Hamburger Menu (Mobile) */}
-            <button onClick={toggleSideMenu} className="md:hidden p-3 text-gray-600 hover:text-gray-900">
+            <button onClick={toggleSideMenu} className="lg:hidden p-3 text-gray-600 hover:text-gray-900">
               <Menu size={24} />
             </button>
           </div>
@@ -481,8 +555,6 @@ export const Header: React.FC<HeaderProps> = ({ onCartClick, onAdminAccess }) =>
       {isSearchModalOpen && <SearchModal onClose={closeSearchModal} />}
       {isLoginModalOpen && <LoginSignupForm isLoginMode={isLoginMode} onClose={closeLoginModal} />}
       {isSideMenuOpen && <SideMenu isOpen={isSideMenuOpen} onClose={toggleSideMenu} />}
-      
-      {/* Render the new Wishlist Sidebar */}
       <WishlistSidebar isOpen={isWishlistOpen} onClose={closeWishlistSidebar} items={mockWishlistItems} />
     </>
   );
